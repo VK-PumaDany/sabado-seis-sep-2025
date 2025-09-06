@@ -21,7 +21,7 @@
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="fas fa-search"></i>
                                                 Buscar</button>
-                                            <a href="" class="btn btn-primary">Nuevo</a>
+                                            <a href="{{ route('usuarios.create') }}" class="btn btn-primary">Nuevo</a>
                                         </div>
                                     </div>
                                 </form>
