@@ -1,38 +1,47 @@
 services:
   - type: web
-    name: laravel12-app
+    name: sabado-seis-sep-2025
     env: docker
     dockerfilePath: ./Dockerfile
     plan: free
     autoDeploy: true
+
     envVars:
+      - key: APP_NAME
+        value: Sabado Seis Sep 2025
       - key: APP_ENV
         value: production
       - key: APP_KEY
-        sync: false
+        sync: false # Render generará la key en las variables de entorno
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://sabado-seis-sep-2025.onrender.com
+
+      # Base de datos
       - key: DB_CONNECTION
         value: mysql
       - key: DB_HOST
         fromDatabase:
-          name: laravel-db
+          name: sabado-seis-sep-2025-db
           property: host
       - key: DB_PORT
         fromDatabase:
-          name: laravel-db
+          name: sabado-seis-sep-2025-db
           property: port
       - key: DB_DATABASE
         fromDatabase:
-          name: laravel-db
+          name: sabado-seis-sep-2025-db
           property: database
       - key: DB_USERNAME
         fromDatabase:
-          name: laravel-db
+          name: sabado-seis-sep-2025-db
           property: user
       - key: DB_PASSWORD
         fromDatabase:
-          name: laravel-db
+          name: sabado-seis-sep-2025-db
           property: password
 
 databases:
-  - name: laravel-db
+  - name: sabado-seis-sep-2025-db
     plan: free
