@@ -21,6 +21,7 @@
       name="keywords"
       content="sistema, artcode"
     />
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <!--end::Primary Meta Tags-->
     <!--begin::Accessibility Features-->
     <!-- Skip links will be dynamically added by accessibility.js -->
