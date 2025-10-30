@@ -8,6 +8,8 @@ RUN apk add --no-cache \
     zip \
     unzip \
     curl \
+    nodejs \
+    npm \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -30,12 +32,20 @@ COPY . .
 # Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Permisos para el almacenamiento y caché
+# 🔹 Instalar dependencias del frontend y construir los assets
+# (esto soluciona el problema de que los estilos no carguen)
+RUN if [ -f package.json ]; then \
+      npm install && npm run build; \
+    fi
+
+# 🔹 Dar permisos correctos para el almacenamiento y caché
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# 🔹 Limpiar y optimizar la configuración de Laravel
+RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 # Exponer el puerto que Render asigna dinámicamente
 EXPOSE 10000
 
-# Comando para correr Laravel en Render
+# 🔹 Ejecutar migraciones y servir desde la carpeta pública
 CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
-
