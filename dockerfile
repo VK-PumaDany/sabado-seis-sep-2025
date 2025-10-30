@@ -1,4 +1,4 @@
-# Imagen base ligera
+# Imagen base de PHP 8.3 con Alpine
 FROM php:8.3-fpm-alpine
 
 # Instalar dependencias del sistema y extensiones necesarias
@@ -10,27 +10,31 @@ RUN apk add --no-cache \
     curl \
     libpng-dev \
     libjpeg-turbo-dev \
-    libzip-dev \
+    freetype-dev \
     oniguruma-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+    libxml2-dev \
+    icu-dev \
+    mysql-client \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd intl
 
-# Crear directorio de trabajo
-WORKDIR /var/www/html
-
-# Copiar composer desde otra imagen temporal
+# Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copiar los archivos del proyecto
+# Crear directorio de la app
+WORKDIR /var/www/html
+
+# Copiar archivos de Laravel
 COPY . .
 
-# Instalar dependencias PHP (sin dev para producción)
+# Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Dar permisos correctos
-RUN chown -R www-data:www-data storage bootstrap/cache
+# Permisos para el almacenamiento y caché
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto 8080 (Render usará este puerto)
-EXPOSE 8080
+# Exponer el puerto que Render asigna dinámicamente
+EXPOSE 10000
 
-# Comando de inicio
-CMD php artisan serve --host=0.0.0.0 --port=8080
+# Comando para correr Laravel en Render
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
