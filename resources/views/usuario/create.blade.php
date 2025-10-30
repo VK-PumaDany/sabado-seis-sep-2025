@@ -72,7 +72,7 @@
             const data = Object.fromEntries(formData);
             console.log(data);
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/users', {
+                const response = await fetch('https://sabado-seis-sep-2025.onrender.com/api/users', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
