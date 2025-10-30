@@ -1,39 +1,41 @@
-# Imagen base PHP 8.3 con Alpine
+# Imagen base de PHP 8.3 con Alpine
 FROM php:8.3-fpm-alpine
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema y extensiones necesarias
 RUN apk add --no-cache \
-    bash git zip unzip curl nodejs npm \
-    libpng-dev libjpeg-turbo-dev freetype-dev \
-    oniguruma-dev libxml2-dev icu-dev mysql-client \
+    bash \
+    git \
+    zip \
+    unzip \
+    curl \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    icu-dev \
+    mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd intl
 
 # Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Crear directorio de trabajo
+# Crear directorio de la app
 WORKDIR /var/www/html
 
-# Copiar archivos necesarios para instalar dependencias
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader
-
-# Copiar archivos del frontend y construir los assets
-COPY package*.json ./
-RUN npm install && npm run build
-
-# Copiar el resto del proyecto (incluye public/, resources/, etc.)
+# Copiar archivos de Laravel
 COPY . .
 
-# Dar permisos correctos
-RUN chown -R www-data:www-data storage bootstrap/cache public
+# Instalar dependencias de PHP
+RUN composer install --no-dev --optimize-autoloader
 
-# Cachear configuraciones de Laravel
-RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+# Permisos para el almacenamiento y caché
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto dinámico de Render
+# Exponer el puerto que Render asigna dinámicamente
 EXPOSE 10000
 
-# Ejecutar migraciones y servir Laravel desde /public
+# Comando para correr Laravel en Render
 CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
+
