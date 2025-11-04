@@ -24,33 +24,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Crear directorio de la app
 WORKDIR /var/www/html
 
-# Copiar composer.json y composer.lock primero
-COPY composer.json composer.lock ./
-
-# Instalar dependencias de PHP
-RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
-
-# Copiar el resto de archivos de Laravel
+# Copiar archivos de Laravel
 COPY . .
 
-# Crear .env si no existe (basado en .env.example)
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
-
-# Generar application key si no existe
-RUN php artisan key:generate --ansi
-
-# Ejecutar scripts de composer ahora que todos los archivos están presentes
-RUN composer dump-autoload --optimize --no-scripts
+# Instalar dependencias de PHP
+RUN composer install --no-dev --optimize-autoloader
 
 # Permisos para el almacenamiento y caché
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto
+# Exponer el puerto que Render asigna dinámicamente
 EXPOSE 10000
 
-# Script de inicio
-COPY docker/start.sh /start.sh
-RUN chmod +x /start.sh
+# Comando para correr Laravel en Render
+CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
 
-CMD ["/start.sh"]
