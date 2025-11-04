@@ -46,6 +46,7 @@ RUN mkdir -p /etc/supervisor/conf.d
 COPY <<EOF /etc/supervisor/conf.d/supervisord.conf
 [supervisord]
 nodaemon=true
+user=root
 
 [program:php-fpm]
 command=docker-php-entrypoint php-fpm
