@@ -1,15 +1,13 @@
 # Imagen base de PHP 8.3 con Alpine
 FROM php:8.3-fpm-alpine
 
-# Instalar Nginx y dependencias del sistema
+# Instalar dependencias del sistema y extensiones necesarias
 RUN apk add --no-cache \
     bash \
     git \
     zip \
     unzip \
     curl \
-    nginx \
-    supervisor \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -26,56 +24,17 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Crear directorio de la app
 WORKDIR /var/www/html
 
-# Copiar composer files primero (para aprovechar cache de Docker)
-COPY composer.json composer.lock ./
-
-# Instalar dependencias sin scripts para evitar errores
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
-
-# Copiar el resto de archivos de Laravel
+# Copiar archivos de Laravel
 COPY . .
 
-# Generar autoloader optimizado
-RUN composer dump-autoload --optimize
+# Instalar dependencias de PHP
+RUN composer install --no-dev --optimize-autoloader
 
 # Permisos para el almacenamiento y caché
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Crear directorio para Nginx
-RUN mkdir -p /run/nginx /var/log/nginx
-
-# Copiar configuración de Nginx
-COPY nginx-render.conf /etc/nginx/nginx.conf
-
-# Copiar configuración de Supervisor
-COPY supervisord-render.conf /etc/supervisord.conf
-
-# Exponer el puerto
+# Exponer el puerto que Render asigna dinámicamente
 EXPOSE 10000
 
-# Script de inicio con configuración de HTTPS
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'cd /var/www/html' >> /start.sh && \
-    echo '' >> /start.sh && \
-    echo '# Configurar APP_URL y ASSET_URL desde RENDER_EXTERNAL_URL' >> /start.sh && \
-    echo 'if [ -n "$RENDER_EXTERNAL_URL" ]; then' >> /start.sh && \
-    echo '  export APP_URL="$RENDER_EXTERNAL_URL"' >> /start.sh && \
-    echo '  export ASSET_URL="$RENDER_EXTERNAL_URL"' >> /start.sh && \
-    echo 'fi' >> /start.sh && \
-    echo '' >> /start.sh && \
-    echo '# Limpiar y cachear configuración' >> /start.sh && \
-    echo 'php artisan config:clear' >> /start.sh && \
-    echo 'php artisan cache:clear' >> /start.sh && \
-    echo 'php artisan config:cache' >> /start.sh && \
-    echo 'php artisan route:cache' >> /start.sh && \
-    echo 'php artisan view:cache' >> /start.sh && \
-    echo '' >> /start.sh && \
-    echo '# Ejecutar migraciones' >> /start.sh && \
-    echo 'php artisan migrate --force' >> /start.sh && \
-    echo '' >> /start.sh && \
-    echo '# Iniciar Supervisor (Nginx + PHP-FPM)' >> /start.sh && \
-    echo 'exec /usr/bin/supervisord -c /etc/supervisord.conf' >> /start.sh && \
-    chmod +x /start.sh
-
-CMD ["/start.sh"]
+# Comando para correr Laravel en Render
+CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
