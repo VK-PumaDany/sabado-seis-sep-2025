@@ -31,11 +31,21 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
 # Permisos para el almacenamiento y caché
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Exponer el puerto que Render asigna dinámicamente
 EXPOSE 10000
 
-# Comando para correr Laravel en Render
-CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
+# Crear script de inicio
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'cd /var/www/html' >> /start.sh && \
+    echo 'php artisan config:cache' >> /start.sh && \
+    echo 'php artisan route:cache' >> /start.sh && \
+    echo 'php artisan view:cache' >> /start.sh && \
+    echo 'php artisan migrate --force' >> /start.sh && \
+    echo 'exec php artisan serve --host=0.0.0.0 --port=${PORT:-10000}' >> /start.sh && \
+    chmod +x /start.sh
 
+# Comando para correr Laravel en Render
+CMD ["/start.sh"]
