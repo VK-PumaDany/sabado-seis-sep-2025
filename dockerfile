@@ -31,10 +31,14 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
 # Permisos para el almacenamiento y caché
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto que Render asigna dinámicamente
+# Exponer el puerto
 EXPOSE 10000
 
-# Comando para correr Laravel en Render
-CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
+# Script de inicio
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
