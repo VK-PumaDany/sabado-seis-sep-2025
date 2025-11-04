@@ -1,13 +1,15 @@
 # Imagen base de PHP 8.3 con Alpine
 FROM php:8.3-fpm-alpine
 
-# Instalar dependencias del sistema y extensiones necesarias
+# Instalar Nginx y dependencias del sistema
 RUN apk add --no-cache \
     bash \
     git \
     zip \
     unzip \
     curl \
+    nginx \
+    supervisor \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -24,32 +26,35 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Crear directorio de la app
 WORKDIR /var/www/html
 
-# Copiar composer files primero
+# Copiar composer files primero (para aprovechar cache de Docker)
 COPY composer.json composer.lock ./
 
-# Copiar .env temporal para el build
-COPY .env.docker .env
+# Instalar dependencias sin scripts para evitar errores
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-# Instalar dependencias sin scripts
-RUN composer install --no-dev --no-scripts --no-autoloader
-
-# Copiar el resto de archivos
+# Copiar el resto de archivos de Laravel
 COPY . .
 
-# Generar autoloader y ejecutar scripts
+# Generar autoloader optimizado
 RUN composer dump-autoload --optimize
-
-# Generar APP_KEY si no existe
-RUN php artisan key:generate --force || true
 
 # Permisos para el almacenamiento y caché
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto que Render asigna dinámicamente
+# Crear directorio para Nginx
+RUN mkdir -p /run/nginx /var/log/nginx
+
+# Copiar configuración de Nginx
+COPY nginx-render.conf /etc/nginx/nginx.conf
+
+# Copiar configuración de Supervisor
+COPY supervisord-render.conf /etc/supervisord.conf
+
+# Exponer el puerto
 EXPOSE 10000
 
-# Crear script de inicio que usa las variables de Render
+# Script de inicio con configuración de HTTPS
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'cd /var/www/html' >> /start.sh && \
     echo '' >> /start.sh && \
@@ -69,9 +74,8 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo '# Ejecutar migraciones' >> /start.sh && \
     echo 'php artisan migrate --force' >> /start.sh && \
     echo '' >> /start.sh && \
-    echo '# Iniciar servidor' >> /start.sh && \
-    echo 'exec php artisan serve --host=0.0.0.0 --port=${PORT:-10000}' >> /start.sh && \
+    echo '# Iniciar Supervisor (Nginx + PHP-FPM)' >> /start.sh && \
+    echo 'exec /usr/bin/supervisord -c /etc/supervisord.conf' >> /start.sh && \
     chmod +x /start.sh
 
-# Comando para correr Laravel en Render
 CMD ["/start.sh"]
