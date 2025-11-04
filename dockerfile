@@ -1,13 +1,15 @@
-# Imagen base de PHP 8.3 con Alpine
+# Imagen base PHP 8.3 con FPM y Alpine
 FROM php:8.3-fpm-alpine
 
-# Instalar dependencias del sistema y extensiones necesarias
+# Instalar dependencias del sistema y extensiones PHP
 RUN apk add --no-cache \
     bash \
     git \
     zip \
     unzip \
     curl \
+    nginx \
+    supervisor \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -21,21 +23,40 @@ RUN apk add --no-cache \
 # Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Crear directorio de la app
+# Directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar archivos de Laravel
+# Copiar archivos del proyecto
 COPY . .
 
-# Instalar dependencias de PHP
+# Instalar dependencias PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Permisos para el almacenamiento y caché
+# Copiar configuración de Nginx
+COPY ./nginx.conf /etc/nginx/nginx.conf
+
+# Permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto que Render asigna dinámicamente
+# Exponer puerto dinámico de Render
 EXPOSE 10000
 
-# Comando para correr Laravel en Render
-CMD php artisan migrate --force && php -S 0.0.0.0:${PORT:-10000} -t public
+# Configurar Supervisor para ejecutar Nginx + PHP-FPM
+RUN mkdir -p /etc/supervisor/conf.d
+COPY <<EOF /etc/supervisor/conf.d/supervisord.conf
+[supervisord]
+nodaemon=true
 
+[program:php-fpm]
+command=docker-php-entrypoint php-fpm
+autostart=true
+autorestart=true
+
+[program:nginx]
+command=nginx -g 'daemon off;'
+autostart=true
+autorestart=true
+EOF
+
+# Comando final
+CMD php artisan migrate --force && supervisord -c /etc/supervisor/conf.d/supervisord.conf
