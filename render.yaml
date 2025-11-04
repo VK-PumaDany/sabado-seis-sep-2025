@@ -17,6 +17,8 @@ services:
         value: false
       - key: APP_URL
         value: https://sabado-seis-sep-2025.onrender.com
+      - key: ASSET_URL
+        value: https://sabado-seis-sep-2025.onrender.com
 
       # Base de datos
       - key: DB_CONNECTION

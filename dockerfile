@@ -40,6 +40,8 @@ EXPOSE 10000
 # Crear script de inicio
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'cd /var/www/html' >> /start.sh && \
+    echo 'php artisan config:clear' >> /start.sh && \
+    echo 'php artisan cache:clear' >> /start.sh && \
     echo 'php artisan config:cache' >> /start.sh && \
     echo 'php artisan route:cache' >> /start.sh && \
     echo 'php artisan view:cache' >> /start.sh && \
