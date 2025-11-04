@@ -24,11 +24,23 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Crear directorio de la app
 WORKDIR /var/www/html
 
-# Copiar archivos de Laravel
-COPY . .
+# Copiar composer.json y composer.lock primero
+COPY composer.json composer.lock ./
 
 # Instalar dependencias de PHP
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+
+# Copiar el resto de archivos de Laravel
+COPY . .
+
+# Crear .env si no existe (basado en .env.example)
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
+
+# Generar application key si no existe
+RUN php artisan key:generate --ansi
+
+# Ejecutar scripts de composer ahora que todos los archivos están presentes
+RUN composer dump-autoload --optimize --no-scripts
 
 # Permisos para el almacenamiento y caché
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
